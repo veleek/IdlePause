@@ -6,7 +6,7 @@ If you leave your computer or are distracted by something and you don't pause th
 
 In the worst case, you may have missed an entire day and passed out potentially losing items or a large chunk of cash.  The auto-save means that the only way to get your day back is to manually revert to the backed up save from the previous day that the game makes automatically.
 
-Now you can save yourself the trouble by automatically pausing the game (by opening your inventory) if you have been idle for a certain period of time.
+Now you can save yourself the trouble by automatically pausing the game if you have been idle for a certain period of time.
 
 ## Installation
 
@@ -16,11 +16,16 @@ Now you can save yourself the trouble by automatically pausing the game (by open
 
 ## Configuration
 
-The default length of time you must be idle before the menu opens is 5 seconds (5000ms).  You can modify the value by changing `IdleDuration` in the `config.json`.  This represents the duration in milliseconds before you will be considred idle.
-
 ```json
 {
-  "IdleDuration": 5000
+  "IdleDuration": 5000,
+  "OpenMenuOnPause": false,
+  "ShowIdleTooltip": true,
+  "IdleText": "Zzzz"
 }
 ```
 
+* **IdleDuration** - *Default: 5 seconds (5000ms)* The default length of time you must be idle for the game pauses.
+* **OpenMenuOnPause** - *Default: false* If true, the inventory menu will automatically be opened when you're idle.
+* **ShowIdleTooltip** - *Default: true* If true, a tooltip will be shown when you are idle.
+* **IdleText** - *Default: Zzzz* The text to show in the tooltip when you are idle.

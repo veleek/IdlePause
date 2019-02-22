@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Menus;
 
@@ -13,42 +12,41 @@ namespace Ben.StardewValley
         /// <summary>
         /// The length of time the user has been idle.
         /// </summary>
-        private double idleTime;
+        private double _idleTime;
 
         /// <summary>
         /// The last time of day that the user was not idle during.
         /// </summary>
-        private int lastNonIdleTimeOfDay;
+        private int _lastNonIdleTimeOfDay;
 
         /// <summary>
         /// The index of the last tool the user was using.
         /// </summary>
-        private int lastToolIndex;
+        private int _lastToolIndex;
 
         public IdlePauseConfig Config { get; set; }
 
-        public bool IsIdle => this.idleTime > this.Config.IdleDuration;
+        public bool IsIdle => _idleTime > Config.IdleDuration;
 
         public override void Entry(IModHelper helper)
         {
-            this.Config = helper.ReadConfig<IdlePauseConfig>();
+            Config = helper.ReadConfig<IdlePauseConfig>();
+            helper.Events.GameLoop.UpdateTicked += UpdateIdleTime;
 
-            GameEvents.UpdateTick += this.UpdateIdleTime;
-
-            if (this.Config.ShowIdleTooltip)
+            if (Config.ShowIdleTooltip)
             {
-                GraphicsEvents.OnPostRenderHudEvent += this.RenderIdleHud;
+                helper.Events.Display.RenderedHud += RenderIdleHud;
             }
         }
 
         private void RenderIdleHud(object sender, EventArgs eventArgs)
         {
-            if (!this.IsIdle) return;
+            if (!IsIdle) return;
 
             SpriteBatch b = Game1.spriteBatch;
             SpriteFont font = Game1.smallFont;
 
-            string idleText = this.Config.IdleText;
+            string idleText = Config.IdleText;
             int margin = Game1.tileSize * 3 / 8;
             int width = (int)font.MeasureString(idleText).X + 2 * margin;
             int height = Math.Max(60, (int)font.MeasureString(idleText).Y + 2 * margin); //60 is "cornerSize" * 3 on SDV source
@@ -74,37 +72,37 @@ namespace Ben.StardewValley
             Farmer player = Game1.player;
             if (player == null) return;
 
-            if (!this.CheckIdle())
+            if (!CheckIdle())
             {
                 // Reset the idle time if time if they're doing anything, or they've moved at all.
-                this.idleTime = 0;
+                _idleTime = 0;
             }
             else
             {
-                this.idleTime += Game1.currentGameTime.ElapsedGameTime.TotalMilliseconds;
+                _idleTime += Game1.currentGameTime.ElapsedGameTime.TotalMilliseconds;
 
-                if (this.idleTime > this.Config.IdleDuration)
+                if (_idleTime > Config.IdleDuration)
                 {
                     // If we're currently idle, pause the game
 
-                    if (this.Config.OpenMenuOnPause)
+                    if (Config.OpenMenuOnPause)
                     {
                         Game1.activeClickableMenu = new GameMenu();
-                        this.idleTime = 0;
+                        _idleTime = 0;
                     }
                     else
                     {
-                        Game1.timeOfDay = this.lastNonIdleTimeOfDay;
+                        Game1.timeOfDay = _lastNonIdleTimeOfDay;
                     }
                 }
                 else
                 {
                     // If we're not idle, store the time of day.
-                    this.lastNonIdleTimeOfDay = Game1.timeOfDay;
+                    _lastNonIdleTimeOfDay = Game1.timeOfDay;
                 }
             }
 
-            this.lastToolIndex = player.CurrentToolIndex;
+            _lastToolIndex = player.CurrentToolIndex;
         }
 
         /// <summary>
@@ -122,7 +120,7 @@ namespace Ben.StardewValley
             if (player.UsingTool) return false;
 
             // Check if they've changed tools.
-            if (player.CurrentToolIndex != this.lastToolIndex) return false;
+            if (player.CurrentToolIndex != _lastToolIndex) return false;
 
             // Check for movement (or attempted movement)
             if (player.CanMove && player.isMoving()) return false;

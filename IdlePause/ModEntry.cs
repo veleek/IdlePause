@@ -7,39 +7,37 @@ using StardewValley.Menus;
 
 namespace Ben.StardewValley
 {
+    /// <summary>The mod entry class.</summary>
     public class ModEntry : Mod
     {
-        /// <summary>
-        /// The length of time the user has been idle.
-        /// </summary>
+        /// <summary>The length of time the user has been idle.</summary>
         private double _idleTime;
 
-        /// <summary>
-        /// The last time of day that the user was not idle during.
-        /// </summary>
+        /// <summary>The last time of day that the user was not idle during.</summary>
         private int _lastNonIdleTimeOfDay;
 
-        /// <summary>
-        /// The index of the last tool the user was using.
-        /// </summary>
+        /// <summary>The index of the last tool the user was using.</summary>
         private int _lastToolIndex;
 
-        public IdlePauseConfig Config { get; set; }
+        private IdlePauseConfig Config;
 
-        public bool IsIdle => _idleTime > Config.IdleDuration;
+        private bool IsIdle => _idleTime > Config.IdleDuration;
 
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
             Config = helper.ReadConfig<IdlePauseConfig>();
-            helper.Events.GameLoop.UpdateTicked += UpdateIdleTime;
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
 
             if (Config.ShowIdleTooltip)
-            {
-                helper.Events.Display.RenderedHud += RenderIdleHud;
-            }
+                helper.Events.Display.RenderedHud += OnRenderedHud;
         }
 
-        private void RenderIdleHud(object sender, EventArgs eventArgs)
+        /// <summary>Raised after drawing the HUD (item toolbar, clock, etc) to the sprite batch, but before it's rendered to the screen. The vanilla HUD may be hidden at this point (e.g. because a menu is open).</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnRenderedHud(object sender, EventArgs e)
         {
             if (!IsIdle) return;
 
@@ -51,22 +49,21 @@ namespace Ben.StardewValley
             int width = (int)font.MeasureString(idleText).X + 2 * margin;
             int height = Math.Max(60, (int)font.MeasureString(idleText).Y + 2 * margin); //60 is "cornerSize" * 3 on SDV source
             const int x = 10, y = 10;
-            
+
             IClickableMenu.drawTextureBox(b, x, y, width, height, Color.White);
 
             Vector2 tPos = new Vector2(x + margin, y + margin + 4);
             b.DrawString(font, idleText, tPos + new Vector2(2, 2), Game1.textShadowColor);
             b.DrawString(font, idleText, tPos, Game1.textColor);
-            
+
         }
 
-        /// <summary>
-        ///     Check if the player has moved, and if they are idle do not update gametime.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void UpdateIdleTime(object sender, EventArgs e)
+        /// <summary>Raised after the game state is updated (≈60 times per second).</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnUpdateTicked(object sender, EventArgs e)
         {
+            // Check if the player has moved, and if they are idle do not update game time.
             if (Game1.currentLocation == null) return;
 
             Farmer player = Game1.player;
@@ -105,9 +102,7 @@ namespace Ben.StardewValley
             _lastToolIndex = player.CurrentToolIndex;
         }
 
-        /// <summary>
-        /// Determines if the player is currently idle.
-        /// </summary>
+        /// <summary>Determines if the player is currently idle.</summary>
         /// <returns>True if the player is idle, false otherwise.</returns>
         private bool CheckIdle()
         {

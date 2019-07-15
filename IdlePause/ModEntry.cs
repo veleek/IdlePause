@@ -2,114 +2,107 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Menus;
 
 namespace Ben.StardewValley
 {
-    public class IdlePause : Mod
+    /// <summary>The mod entry class.</summary>
+    public class ModEntry : Mod
     {
-        /// <summary>
-        /// The length of time the user has been idle.
-        /// </summary>
-        private double idleTime;
+        /// <summary>The length of time the user has been idle.</summary>
+        private double _idleTime;
 
-        /// <summary>
-        /// The last time of day that the user was not idle during.
-        /// </summary>
-        private int lastNonIdleTimeOfDay;
+        /// <summary>The last time of day that the user was not idle during.</summary>
+        private int _lastNonIdleTimeOfDay;
 
-        /// <summary>
-        /// The index of the last tool the user was using.
-        /// </summary>
-        private int lastToolIndex;
+        /// <summary>The index of the last tool the user was using.</summary>
+        private int _lastToolIndex;
 
-        public IdlePauseConfig Config { get; set; }
+        private IdlePauseConfig Config;
 
-        public bool IsIdle => this.idleTime > this.Config.IdleDuration;
+        private bool IsIdle => _idleTime > Config.IdleDuration;
 
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            this.Config = helper.ReadConfig<IdlePauseConfig>();
+            Config = helper.ReadConfig<IdlePauseConfig>();
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
 
-            GameEvents.UpdateTick += this.UpdateIdleTime;
-
-            if (this.Config.ShowIdleTooltip)
-            {
-                GraphicsEvents.OnPostRenderHudEvent += this.RenderIdleHud;
-            }
+            if (Config.ShowIdleTooltip)
+                helper.Events.Display.RenderedHud += OnRenderedHud;
         }
 
-        private void RenderIdleHud(object sender, EventArgs eventArgs)
+        /// <summary>Raised after drawing the HUD (item toolbar, clock, etc) to the sprite batch, but before it's rendered to the screen. The vanilla HUD may be hidden at this point (e.g. because a menu is open).</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnRenderedHud(object sender, EventArgs e)
         {
-            if (!this.IsIdle) return;
+            if (!IsIdle) return;
 
             SpriteBatch b = Game1.spriteBatch;
             SpriteFont font = Game1.smallFont;
 
-            string idleText = this.Config.IdleText;
+            string idleText = Config.IdleText;
             int margin = Game1.tileSize * 3 / 8;
             int width = (int)font.MeasureString(idleText).X + 2 * margin;
             int height = Math.Max(60, (int)font.MeasureString(idleText).Y + 2 * margin); //60 is "cornerSize" * 3 on SDV source
             const int x = 10, y = 10;
-            
+
             IClickableMenu.drawTextureBox(b, x, y, width, height, Color.White);
 
             Vector2 tPos = new Vector2(x + margin, y + margin + 4);
             b.DrawString(font, idleText, tPos + new Vector2(2, 2), Game1.textShadowColor);
             b.DrawString(font, idleText, tPos, Game1.textColor);
-            
+
         }
 
-        /// <summary>
-        ///     Check if the player has moved, and if they are idle do not update gametime.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void UpdateIdleTime(object sender, EventArgs e)
+        /// <summary>Raised after the game state is updated (≈60 times per second).</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnUpdateTicked(object sender, EventArgs e)
         {
+            // Check if the player has moved, and if they are idle do not update game time.
             if (Game1.currentLocation == null) return;
 
             Farmer player = Game1.player;
             if (player == null) return;
 
-            if (!this.CheckIdle())
+            if (!CheckIdle())
             {
                 // Reset the idle time if time if they're doing anything, or they've moved at all.
-                this.idleTime = 0;
+                _idleTime = 0;
             }
             else
             {
-                this.idleTime += Game1.currentGameTime.ElapsedGameTime.TotalMilliseconds;
+                _idleTime += Game1.currentGameTime.ElapsedGameTime.TotalMilliseconds;
 
-                if (this.idleTime > this.Config.IdleDuration)
+                if (_idleTime > Config.IdleDuration)
                 {
                     // If we're currently idle, pause the game
 
-                    if (this.Config.OpenMenuOnPause)
+                    if (Config.OpenMenuOnPause)
                     {
                         Game1.activeClickableMenu = new GameMenu();
-                        this.idleTime = 0;
+                        _idleTime = 0;
                     }
                     else
                     {
-                        Game1.timeOfDay = this.lastNonIdleTimeOfDay;
+                        Game1.timeOfDay = _lastNonIdleTimeOfDay;
                     }
                 }
                 else
                 {
                     // If we're not idle, store the time of day.
-                    this.lastNonIdleTimeOfDay = Game1.timeOfDay;
+                    _lastNonIdleTimeOfDay = Game1.timeOfDay;
                 }
             }
 
-            this.lastToolIndex = player.CurrentToolIndex;
+            _lastToolIndex = player.CurrentToolIndex;
         }
 
-        /// <summary>
-        /// Determines if the player is currently idle.
-        /// </summary>
+        /// <summary>Determines if the player is currently idle.</summary>
         /// <returns>True if the player is idle, false otherwise.</returns>
         private bool CheckIdle()
         {
@@ -122,7 +115,7 @@ namespace Ben.StardewValley
             if (player.UsingTool) return false;
 
             // Check if they've changed tools.
-            if (player.CurrentToolIndex != this.lastToolIndex) return false;
+            if (player.CurrentToolIndex != _lastToolIndex) return false;
 
             // Check for movement (or attempted movement)
             if (player.CanMove && player.isMoving()) return false;

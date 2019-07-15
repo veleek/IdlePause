@@ -7,7 +7,7 @@ using StardewValley.Menus;
 
 namespace Ben.StardewValley
 {
-    public class IdlePause : Mod
+    public class ModEntry : Mod
     {
         /// <summary>
         /// The length of time the user has been idle.
